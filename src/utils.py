@@ -2,8 +2,10 @@ from typing import Tuple, Dict, Union, List
 
 import os
 import json
+import calendar
 import pandas as pd
 import gzip
+import datetime as dt
 from pathlib import Path
 from zipfile import ZipFile
 from pandas.core.indexes.multi import MultiIndex
@@ -121,3 +123,25 @@ def multi_index_to_dict(df: pd.DataFrame) -> NestedDict:
         return {k: multi_index_to_dict(df.loc[k]) for k in df.index.remove_unused_levels().levels[0]}
     # return {k: df.to_dict(orient='records') for k in df.index}
     return df.to_dict('index')
+
+
+def get_end_month_date(date_of_interest: dt.date) -> dt.date:
+    """
+    Turn any date into the last date of the same month. Usefull for loading monthly data.
+    Note - the last date for all months (except February) is 30th day. 
+
+    Parameters
+    ----------
+    date_of_interest : datetime.date
+        Date to turn into the last date of the month
+
+    Returns
+    -------
+    datetime.date
+        Last date of the correspodning motnh
+    """
+    end_month_date = date_of_interest.replace(day=calendar.monthrange(date_of_interest.year, date_of_interest.month)[1])
+    # For compatability with other code - should use 30, not 31st of month
+    if end_month_date.day == 31:
+        end_month_date = end_month_date - dt.timedelta(days=1)
+    return end_month_date

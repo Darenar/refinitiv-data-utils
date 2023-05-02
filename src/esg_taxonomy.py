@@ -10,18 +10,18 @@ class ESGTaxonomy(dict):
         with open(path_to_json, 'r') as f:
             return cls(json.load(f))
 
-    def get_pillars(self) -> List[str]:
-        return list(self)
+    def get_pillars(self, add_suffix: str = '') -> List[str]:
+        return [f"{v}{add_suffix}" for v in list(self)]
     
-    def get_categories(self, pillars: Union[str, List[str]] = None) -> List[str]:
+    def get_categories(self, pillars: Union[str, List[str]] = None,  add_suffix: str = '') -> List[str]:
         pillars = self.get_pillars() if pillars is None else pillars
         if not isinstance(pillars, list):
             pillars = [pillars]
-        return list(chain(*[list(self[p]) for p in pillars]))
+        return [f"{v}{add_suffix}" for v in list(chain(*[list(self[p]) for p in pillars]))]
     
     def get_scores(self, pillars: Union[str, List[str]] = None, 
                    categories: Union[str, List[str]] = None, 
-                   filter_controversy_value: str = None) -> List[str]:
+                   filter_controversy_value: str = None, add_suffix: str = '') -> List[str]:
         if filter_controversy_value is None:
             filter_controversy_value = ['Y', 'N']
         if not isinstance(filter_controversy_value, list):
@@ -41,5 +41,5 @@ class ESGTaxonomy(dict):
                 if c in self[p]:
                     for score in self[p][c]:
                         if self[p][c][score]['controversy'] in filter_controversy_value:
-                            scores.append(score)
+                            scores.append(f"{score}{add_suffix}")
         return scores
