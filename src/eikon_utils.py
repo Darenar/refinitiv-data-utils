@@ -1,4 +1,4 @@
-from typing import Union, List, Optional, Dict
+from typing import Union, List, Optional, Dict, Callable
 import json
 
 import eikon as ek
@@ -6,9 +6,37 @@ import pandas as pd
 from tqdm import tqdm
 import datetime as dt
 import dateutil
+import time
+import pyperclip
+
 
 
 from .utils import get_end_month_date
+
+
+def retry_on_timeout(n_trials: int = 2, sleep_time: int = 1) -> Callable:
+    """
+    Decorator function that in case of TimeOut exception will try one more time after sleep_time
+    Parameters
+    ----------
+    n_trials : int, optional
+        Maximum number of retrials, by default 2
+    sleep : int, optional
+        Seconds of sleep, by default 1
+    """
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            for i in range(n_trials):
+                try:
+                    return func(*args, **kwargs)
+                except ek.EikonError as er:
+                    if i < n_trials - 1:
+                        print('retrying')
+                        time.sleep(sleep_time)
+                    else:
+                        raise er
+        return wrapper
+    return decorator
 
 
 def connect(path_to_json_config: str = 'refinitiv-data.config.json'):
@@ -22,9 +50,19 @@ def connect(path_to_json_config: str = 'refinitiv-data.config.json'):
     """
     with open(path_to_json_config, 'r') as f:
         config = json.load(f)
+    print(f"""
+        Please, log in with the following credentials to the Refinitiv WorkSpace first. When logged in - press enter.\n\n
+        Username: {config['sessions']['platform']['rdp']['username']}\n
+        Password: copied to your system clipboard. Use CTRL+V on Windows or CMD+V on Mac to fill in the WorkSpace
+    """)
+    # For security reasons - password should not be shown in the cell state. Thus - copy straight to the clipboard
+    pyperclip.copy(config['sessions']['platform']['rdp']['password'])
+    # Wait for the user to log into WorkSpace, and to enter any input
+    input()
     ek.set_app_key(config['sessions']['platform']['rdp']['app-key'])
 
-    
+
+@retry_on_timeout()
 def load_esg(list_of_rics: Union[List[str], str], *args, **kwargs) -> pd.DataFrame:
     """
     Loading Traditional ESG Sore data through get_data eikon api. 
@@ -52,7 +90,9 @@ def load_esg(list_of_rics: Union[List[str], str], *args, **kwargs) -> pd.DataFra
             'TR.GovernancePillarScore',
         ], *args, **kwargs)
     return df
-    
+
+
+@retry_on_timeout()
 def load_pricing(list_of_rics: Union[List[str], str], *args, **kwargs) -> pd.DataFrame:
     """
     Loading pricing data for given RICS through get_data eikon api.
@@ -80,6 +120,7 @@ def load_pricing(list_of_rics: Union[List[str], str], *args, **kwargs) -> pd.Dat
     return df
 
 
+@retry_on_timeout()
 def load_pricing_series(list_of_rics:  Union[List[str], str], start_date: str, 
                         end_date: str, freq: str = 'daily', batch_size: Optional[int] = None, 
                         fields: Union[List[str], str] = '*') -> pd.DataFrame:
@@ -129,6 +170,7 @@ def load_pricing_series(list_of_rics:  Union[List[str], str], start_date: str,
     return pd.concat(r_dfs, axis=0)
 
 
+@retry_on_timeout()
 def load_index_constituents(index_ric: str, *args, **kwargs) -> pd.DataFrame:
     """
     Loading index constituents using get_data Eikon api. 
@@ -163,7 +205,8 @@ def load_index_constituents(index_ric: str, *args, **kwargs) -> pd.DataFrame:
         sp_df.loc[:, 'Weight'] = (sp_df['Company Market Cap'] / sp_df['Total Date Market Cap']) * 100
     return sp_df
 
-    
+ 
+@retry_on_timeout()
 def load_index_constituents_updates(index_ric: str, parameters: Dict[str, str]) -> pd.DataFrame:
     # Make sure loading both Leavers and Joiners
     if 'IC' in parameters and parameters['IC'] !='B':
@@ -183,6 +226,7 @@ def load_index_constituents_updates(index_ric: str, parameters: Dict[str, str]) 
     return index_updates_df
 
 
+@retry_on_timeout()
 def load_market_cap(ric: str, *args, **kwargs) -> pd.DataFrame:
     """
     Loading market cap info for the RIC using get_data Eikon API.
@@ -217,6 +261,7 @@ def load_market_cap(ric: str, *args, **kwargs) -> pd.DataFrame:
     return market_cap_df
 
 
+@retry_on_timeout()
 def load_index_constituents_historical(index_ric: str, n_months: int = 12 * 40) -> pd.DataFrame:
     """
     Load historical constituents of the index RIC. In brief, the function loads current index state,
