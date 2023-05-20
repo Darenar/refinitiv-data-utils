@@ -9,8 +9,6 @@ import dateutil
 import time
 import pyperclip
 
-
-
 from .utils import get_end_month_date
 
 
@@ -195,7 +193,7 @@ def load_index_constituents(index_ric: str, *args, **kwargs) -> pd.DataFrame:
             'TR.IndexConstituentWeightPercent',
             'TR.IndexConstituentRIC'
         ], *args, **kwargs)
-    if sp_df['Weight percent'].isna().sum():
+    if 'Weight percent' in sp_df and sp_df['Weight percent'].isna().sum():
         # Calculate total market cap
         total_market_cap_by_date = sp_df.groupby(
             'Date', as_index=False)['Company Market Cap'].sum().rename(
@@ -203,6 +201,8 @@ def load_index_constituents(index_ric: str, *args, **kwargs) -> pd.DataFrame:
         sp_df = pd.merge(sp_df, total_market_cap_by_date, how='left', on='Date')
         # Add new column to df with weights
         sp_df.loc[:, 'Weight'] = (sp_df['Company Market Cap'] / sp_df['Total Date Market Cap']) * 100
+    if 'Date' in sp_df:
+        sp_df.loc[:, 'Date'] = pd.to_datetime(sp_df['Date'])
     return sp_df
 
  
@@ -304,5 +304,4 @@ def load_index_constituents_historical(index_ric: str, n_months: int = 12 * 40) 
     monthly_constituents_df = pd.DataFrame(monthly_constituents, columns=['date', 'constituents'])
     monthly_constituents_df.loc[:, 'num_companies'] = monthly_constituents_df.constituents.str.len()
     return monthly_constituents_df
-
 
