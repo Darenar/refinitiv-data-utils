@@ -83,9 +83,14 @@ def load_esg(list_of_rics: Union[List[str], str], *args, **kwargs) -> pd.DataFra
             'TR.TRESGScoreGrade',
             'TR.TRESGCScore',
             'TR.TRESGCScoreGrade',
+            'TR.TRESGCControversiesScore',
+            'TR.TRESGCControversiesScoreGrade',
             'TR.EnvironmentPillarScore',
             'TR.SocialPillarScore',
             'TR.GovernancePillarScore',
+            'TR.EnvironmentPillarScoreGrade',
+            'TR.SocialPillarScoreGrade',
+            'TR.GovernancePillarScoreGrade',
         ], *args, **kwargs)
     return df
 
